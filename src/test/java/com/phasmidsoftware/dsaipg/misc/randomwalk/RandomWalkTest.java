@@ -5,10 +5,9 @@
 package com.phasmidsoftware.dsaipg.misc.randomwalk;
 
 import com.phasmidsoftware.dsaipg.util.PrivateMethodTester;
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import org.junit.Test;
 
 public class RandomWalkTest {
 
