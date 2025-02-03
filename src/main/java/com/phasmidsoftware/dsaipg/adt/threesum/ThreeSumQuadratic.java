@@ -23,6 +23,7 @@ public class ThreeSumQuadratic implements ThreeSum {
      * @param a a sorted array.
      */
     public ThreeSumQuadratic(int[] a) {
+        
         this.a = a;
         length = a.length;
     }
@@ -35,10 +36,12 @@ public class ThreeSumQuadratic implements ThreeSum {
      * the sum of its three integers is zero.
      */
     public Triple[] getTriples() {
-        List<Triple> triples = new ArrayList<>();
+           List<Triple> triples = new ArrayList<>();
         for (int i = 0; i < length; i++) triples.addAll(getTriples(i));
         Collections.sort(triples);
         return triples.stream().distinct().toArray(Triple[]::new);
+
+       
     }
 
     /**
@@ -48,9 +51,31 @@ public class ThreeSumQuadratic implements ThreeSum {
      * @return a Triple such that
      */
      List<Triple> getTriples(int j) {
-         List<Triple> triples = new ArrayList<>();
-        // TO BE IMPLEMENTED  : for each candidate, test if a[i] + a[j] + a[k] = 0.
-throw new RuntimeException("implementation missing");
+          List<Triple> triples = new ArrayList<>();
+        int left = j + 1;
+        int right = length - 1;
+
+        while (left < right) {
+            int sum = a[j] + a[left] + a[right];
+
+            if (sum == 0) {
+                Triple triplet = new Triple(a[j], a[left], a[right]);
+                triples.add(triplet);
+
+                
+                while (left < right && a[left] == a[left + 1]) left++;
+                while (left < right && a[right] == a[right - 1]) right--;
+
+                left++;
+                right--;
+            } else if (sum < 0) {
+                left++;
+            } else {
+                right--;
+            }
+        }
+        return triples;
+     
     }
 
     private final int[] a;
