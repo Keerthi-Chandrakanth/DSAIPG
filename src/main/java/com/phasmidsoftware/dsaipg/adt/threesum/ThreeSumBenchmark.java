@@ -4,13 +4,13 @@
 
 package com.phasmidsoftware.dsaipg.adt.threesum;
 
-import com.phasmidsoftware.dsaipg.util.Benchmark_Timer;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import com.phasmidsoftware.dsaipg.util.Stopwatch;
 import com.phasmidsoftware.dsaipg.util.TimeLogger;
 import com.phasmidsoftware.dsaipg.util.Utilities;
 
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 
 /**
  * The ThreeSumBenchmark class provides a framework for evaluating and comparing
@@ -65,6 +65,7 @@ public class ThreeSumBenchmark {
         benchmarkThreeSum("ThreeSumQuadratic", (xs) -> new ThreeSumQuadratic(xs).getTriples(), n, timeLoggersQuadratic);
         benchmarkThreeSum("ThreeSumQuadrithmic", (xs) -> new ThreeSumQuadrithmic(xs).getTriples(), n, timeLoggersQuadrithmic);
         benchmarkThreeSum("ThreeSumCubic", (xs) -> new ThreeSumCubic(xs).getTriples(), n, timeLoggersCubic);
+  
     }
 
     /**
@@ -102,10 +103,26 @@ public class ThreeSumBenchmark {
      */
     private void benchmarkThreeSum(final String description, final Consumer<int[]> function, int n, final TimeLogger[] timeLoggers) {
         if (description.equals("ThreeSumCubic") && n > 4000) return;
-        // TO BE IMPLEMENTED 
-throw new RuntimeException("implementation missing");
+        System.out.println("-----------------------------------------------------");
+        System.out.println(description + " benchmark for n = " + n);
+        
+        for (int i = 0; i < runs; i++) {
+            int[] data = supplier.get();
+            long elapsedMS;
+            
+            try (Stopwatch timer = new Stopwatch()) {
+                function.accept(data);
+                elapsedMS = timer.lap(); 
+            }
+            
+            for (TimeLogger tl : timeLoggers) {
+                tl.log("Run " + i, elapsedMS, n);
+            }
+        }
+        System.out.println();
     }
 
+   
     /**
      * An array of {@link TimeLogger} instances used for benchmarking the cubic implementation
      * of the Three-Sum algorithm. This array contains:
@@ -150,3 +167,4 @@ throw new RuntimeException("implementation missing");
     private final Supplier<int[]> supplier;
     private final int n;
 }
+
