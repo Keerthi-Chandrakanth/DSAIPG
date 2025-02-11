@@ -3,16 +3,15 @@
  */
 package com.phasmidsoftware.dsaipg.sort.elementary;
 
+import java.io.IOException;
+import java.util.Comparator;
+
 import com.phasmidsoftware.dsaipg.sort.Helper;
+import static com.phasmidsoftware.dsaipg.sort.InstrumentedComparatorHelper.getRunsConfig;
 import com.phasmidsoftware.dsaipg.sort.Sort;
 import com.phasmidsoftware.dsaipg.sort.SortWithHelper;
 import com.phasmidsoftware.dsaipg.util.Config;
 import com.phasmidsoftware.dsaipg.util.Config_Benchmark;
-
-import java.io.IOException;
-import java.util.Comparator;
-
-import static com.phasmidsoftware.dsaipg.sort.InstrumentedComparatorHelper.getRunsConfig;
 
 /**
  * A class for performing insertion sort using a comparator, extending functionality from SortWithHelper.
@@ -64,10 +63,14 @@ public class InsertionSortComparator<X> extends SortWithHelper<X> {
      */
     public void sort(X[] xs, int from, int to) {
         final Helper<X> helper = getHelper();
-
-        // TO BE IMPLEMENTED 
-throw new RuntimeException("implementation missing");
-    }
+        for (int i = from + 1; i < to; i++) {
+            int j = i;
+             while (j > from && helper.compare(xs[j - 1], xs[j]) > 0) {
+                helper.swap(xs, j - 1, j);
+                j--;
+            }
+        }
+}
 
     public static final String DESCRIPTION = "Insertion sort";
 

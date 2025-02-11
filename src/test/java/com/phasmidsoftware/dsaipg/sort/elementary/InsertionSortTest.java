@@ -5,15 +5,21 @@
 package com.phasmidsoftware.dsaipg.sort.elementary;
 
 import com.phasmidsoftware.dsaipg.sort.*;
+import com.phasmidsoftware.dsaipg.util.Benchmark_Timer;
 import com.phasmidsoftware.dsaipg.util.Config;
 import com.phasmidsoftware.dsaipg.util.LazyLogger;
 import com.phasmidsoftware.dsaipg.util.PrivateMethodTester;
 import com.phasmidsoftware.dsaipg.util.StatPack;
+import com.phasmidsoftware.dsaipg.util.Timer;
+
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
 
 import static com.phasmidsoftware.dsaipg.sort.Instrument.*;
 import static com.phasmidsoftware.dsaipg.util.ConfigTest.INVERSIONS;
@@ -264,6 +270,76 @@ public class InsertionSortTest {
         assertEquals(78, instrumenter.getHits());
         assertEquals(62, instrumenter.getLookups());
     }
+
+   @Test
+   public void InsertionSortComparatorTest(){
+    int[] sizes = {1000, 2000, 4000, 8000, 16000};  
+        int runs = 10;  
+        final Config config = setupConfig("true", "true", "0", "1", "", "");
+        
+
+
+        System.out.println("\n Benchmarking Insertion Sort Performance\n");
+        System.out.printf("%-10s %-15s %-15s %-15s %-15s%n", "Size", "Random (ms)", "Sorted (ms)", "Partial (ms)", "Reverse (ms)");
+        System.out.println("----------------------------------------------------------------------------------");
+
+        for (int n : sizes) {
+            Comparator<Integer> comparator = Integer::compareTo;
+
+            
+            InsertionSortComparator<Integer> sorter = new InsertionSortComparator<>("Insertion Sort", comparator, n, runs, config);
+
+            
+            Benchmark_Timer<Integer[]> benchmark = new Benchmark_Timer<>(
+                "Insertion Sort",
+                arr -> {
+                    Timer timer = new Timer();  
+                    double avgTime = timer.repeat(runs, () -> {  
+                        sorter.sort(arr, 0, arr.length);  
+                        return null;  
+                    });  
+                    System.out.printf("Size: %d | Avg Run Time (%d runs): %.3f ms%n", arr.length, runs, avgTime);  
+                }
+            );
+
+            double randomTime = benchmark.runFromSupplier(() -> generateRandomArray(n), runs);
+            double sortedTime = benchmark.runFromSupplier(() -> generateSortedArray(n), runs);
+            double partialTime = benchmark.runFromSupplier(() -> generatePartiallySortedArray(n), runs);
+            double reverseTime = benchmark.runFromSupplier(() -> generateReverseSortedArray(n), runs);
+
+            System.out.printf("%-10d %-15.3f %-15.3f %-15.3f %-15.3f%n", n, randomTime, sortedTime, partialTime, reverseTime);
+        }
+        System.out.println("\n Benchmark Completed Successfully!\n");
+
+    }
+
+    private static Integer[] generateRandomArray(int n) {
+        Random random = new Random();
+        Integer[] array = new Integer[n];
+        for (int i = 0; i < n; i++) {
+            array[i] = random.nextInt(100000);
+        }
+        return array;
+    }
+
+    private static Integer[] generateSortedArray(int n) {
+        Integer[] array = generateRandomArray(n);
+        Arrays.sort(array);
+        return array;
+    }
+
+    private static Integer[] generatePartiallySortedArray(int n) {
+        Integer[] array = generateRandomArray(n);
+        Arrays.sort(array, 0, n / 2);
+        return array;
+    }
+
+    private static Integer[] generateReverseSortedArray(int n) {
+        Integer[] array = generateSortedArray(n);
+        Arrays.sort(array, (a, b) -> Integer.compare(b, a));
+        return array;
+    }
+
 
     final static LazyLogger logger = new LazyLogger(InsertionSort.class);
 
