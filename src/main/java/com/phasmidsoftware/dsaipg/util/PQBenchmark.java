@@ -2,15 +2,21 @@
  * Copyright (c) 2024. Robin Hillyard
  */
 package com.phasmidsoftware.dsaipg.util;
-
-import com.phasmidsoftware.dsaipg.adt.pq.PQException;
-import com.phasmidsoftware.dsaipg.adt.pq.PriorityQueue;
-
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
+import com.phasmidsoftware.dsaipg.adt.pq.FibonacciHeap;
+import com.phasmidsoftware.dsaipg.adt.pq.FourAryHeap;
+import com.phasmidsoftware.dsaipg.adt.pq.PQException;
+import com.phasmidsoftware.dsaipg.adt.pq.PriorityQueue;
 import static com.phasmidsoftware.dsaipg.util.SortBenchmarkHelper.getWords;
 
 /**
@@ -21,6 +27,13 @@ import static com.phasmidsoftware.dsaipg.util.SortBenchmarkHelper.getWords;
  */
 public class PQBenchmark {
 
+    private static final int numInserts = 16000;
+    private static final int numDeletes = 4000;
+    private static final int HEAP_SIZE = 4095;
+    private static final Random random = new Random();
+
+
+    
     /**
      * Constructs a new instance of PQBenchmark with the specified configuration.
      *
@@ -45,10 +58,75 @@ public class PQBenchmark {
         logger.info("SortBenchmark.main: " + config.get("huskysort", "version") + " with word counts: " + Arrays.toString(args));
         if (args.length == 0) logger.warn("No word counts specified on the command line");
         PQBenchmark benchmark = new PQBenchmark(config);
-        System.out.println("with floyd: " + benchmark.insertDeleteN(10000, 1000, true));
-        System.out.println("no floyd: " + benchmark.insertDeleteN(10000, 1000, false));
+        benchmark.runBenchmarks();
     }
 
+    public void runBenchmarks() {
+    int[] randomData = generateRandomData(numInserts);
+    benchmarkHeap("Binary Heap",(Supplier<PriorityQueue<Integer>>) () -> new PriorityQueue<Integer>(numInserts, Comparator.<Integer>naturalOrder()),
+    randomData, numDeletes);
+    benchmarkHeap("Binary Heap (Floyd's Trick)",(Supplier<PriorityQueue<Integer>>) () -> new PriorityQueue<Integer>(numInserts, true, Comparator.<Integer>naturalOrder(), true),
+    randomData, numDeletes);
+    benchmarkHeap("4-ary Heap",(Supplier<PriorityQueue<Integer>>) () -> new FourAryHeap<Integer>(numInserts, Comparator.<Integer>naturalOrder()),
+    randomData, numDeletes);
+    benchmarkHeap("4-ary Heap (Floyd's Trick)",(Supplier<PriorityQueue<Integer>>) () -> new FourAryHeap<Integer>(numInserts, true, Comparator.<Integer>naturalOrder(), true),
+    randomData, numDeletes);
+    benchmarkHeap("Fibonacci Heap",(Supplier<PriorityQueue<Integer>>) () -> new FibonacciHeap<Integer>(numInserts, Comparator.<Integer>naturalOrder()),
+    randomData, numDeletes);
+}
+
+    private static void benchmarkHeap(String name, Supplier<PriorityQueue<Integer>> heapSupplier, int[] data, int numDeletes) {
+        System.out.println("Benchmarking: " + name);
+        int[] highestSpilled = { Integer.MIN_VALUE }; 
+        Benchmark<Integer> insertBenchmark = new Benchmark_Timer<>(
+            name + " Insert",
+            null,
+            b -> {
+                PriorityQueue<Integer> heap = heapSupplier.get(); 
+                for (int value : data) {
+                    heap.give(value);
+                }
+            },
+            null
+        );
+     
+        double insertTime = insertBenchmark.run(0, 10);
+        Benchmark<Integer> deleteBenchmark = new Benchmark_Timer<>(
+            name + " Delete",
+            null,
+            b -> {
+                PriorityQueue<Integer> heap = heapSupplier.get();
+                for (int value : data) {
+                    heap.give(value);
+                }
+                for (int i = 0; i < numDeletes; i++) {
+                    try {
+                        int deleted = heap.take();
+                        highestSpilled[0] = Math.max(highestSpilled[0], deleted);
+
+                    } catch (PQException e) {
+                        System.err.println("Error while deleting from " + name + ": " + e.getMessage());
+                        break;
+                    }
+                }
+            },
+            null
+        );
+        double deleteTime = deleteBenchmark.run(0, 10);
+        System.out.printf("%s -> Inserted: %d, Deleted: %d, Insert Time: %.2f ms, Delete Time: %.2f ms%n",
+                          name, data.length, numDeletes, insertTime, deleteTime);
+        System.out.println("Highest spilled value: " + highestSpilled[0]);
+        
+    }
+    
+
+    private static int[] generateRandomData(int size) {
+        int[] data = new int[size];
+        for (int i = 0; i < size; i++) {
+            data[i] = random.nextInt(size * 10);
+        }
+        return data;
+    }
     /**
      * Inserts and conditionally deletes elements from a priority queue using Floyd insertion or standard insertion.
      * This method processes an integer array by inserting elements into a priority queue and, based on a random condition,
@@ -60,14 +138,13 @@ public class PQBenchmark {
     // Insert and delete random integer array with floyd methods according to parameter
     private void insertArray(int[] a, final boolean floyd) {
         PriorityQueue<Integer> pq = new PriorityQueue<Integer>(a.length, true, Comparator.naturalOrder(), floyd);
-        final Random random = new Random();
         for (int j : a) {
             pq.give(j);
             if (random.nextBoolean()) {
                 try {
                     pq.take();
                 } catch (PQException e) {
-                    e.printStackTrace(); // TODO use logging
+                    System.err.println("Error during delete: " + e.getMessage());
                 }
             }
         }
@@ -83,11 +160,12 @@ public class PQBenchmark {
      * @return the average execution time for the benchmark process, in milliseconds.
      */
     private double insertDeleteN(final int n, int m, final boolean floyd) {
-        final Random ran = new Random();
+        /*final Random ran = new Random();
         int[] random = new int[n];
         for (int i = 0; i < n; i++) {
             random[i] = ran.nextInt(n);
-        }
+        }*/
+        int[] random = generateRandomData(n);
         Benchmark<Boolean> bm = new Benchmark_Timer<>(
                 "testPQwithFloydoff",
                 null,

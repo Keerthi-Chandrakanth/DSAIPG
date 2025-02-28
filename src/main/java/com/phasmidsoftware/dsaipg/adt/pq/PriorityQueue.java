@@ -4,7 +4,11 @@
 
 package com.phasmidsoftware.dsaipg.adt.pq;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
@@ -270,8 +274,8 @@ public class PriorityQueue<K> implements Iterable<K> {
     }
 
     private final boolean max;
-    private final int first;
-    private final Comparator<K> comparator;
+    protected final int first;
+    protected final Comparator<K> comparator;
     private final K[] binHeap; // binHeap[i] is ith element of binary heap (first element is reserved)
     private int last; // number of elements in the binary heap
     private final boolean floyd; //Determine whether floyd's snake method is on or off inside the take method
