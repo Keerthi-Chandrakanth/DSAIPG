@@ -91,9 +91,9 @@ public class MergeSort<X extends Comparable<X>> extends SortWithComparableHelper
                     sort(a, aux, mid, to);
                     merge(a, aux, from, mid, to); 
                    
-                    for (int i = from; i < to; i++) {
-                        helper.copy(aux[i], a, i);
-                    }
+                    for (int i = from; i < to; i++) 
+                    {    helper.copy(helper.get(aux, i), a, i);}
+
                 }
 
           
