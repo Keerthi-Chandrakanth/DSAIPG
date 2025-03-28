@@ -4,15 +4,16 @@
 
 package com.phasmidsoftware.dsaipg.sort.linearithmic;
 
+import java.util.Arrays;
+
 import com.phasmidsoftware.dsaipg.sort.Helper;
 import com.phasmidsoftware.dsaipg.sort.SortException;
 import com.phasmidsoftware.dsaipg.sort.SortWithComparableHelper;
 import com.phasmidsoftware.dsaipg.sort.elementary.InsertionSort;
 import com.phasmidsoftware.dsaipg.util.Config;
-
-import java.util.Arrays;
-
-import static com.phasmidsoftware.dsaipg.util.Config_Benchmark.*;
+import static com.phasmidsoftware.dsaipg.util.Config_Benchmark.CUTOFF;
+import static com.phasmidsoftware.dsaipg.util.Config_Benchmark.CUTOFF_DEFAULT;
+import static com.phasmidsoftware.dsaipg.util.Config_Benchmark.HELPER;
 
 /**
  * Class MergeSort.
@@ -78,19 +79,34 @@ public class MergeSort<X extends Comparable<X>> extends SortWithComparableHelper
         }
 
         // TO BE IMPLEMENTED  : implement merge sort with insurance and no-copy optimizations
-        int mid = from + (to - from) / 2;
-        sort(aux, a, from, mid);
-        sort(aux, a, mid, to);
+              int mid = from + (to - from) / 2;
 
-        if (insurance) {
-            if (!noCopy) {
-                merge(aux, a, from, mid, to);
-            } else {
-                merge(a, aux, from, mid, to);
-            }
-        } else {
-            merge(aux, a ,from, mid, to);
-        }
+                if (noCopy) {
+                    sort(aux, a, from, mid);
+                    sort(aux, a, mid, to);
+                    merge(aux, a, from, mid, to); 
+                } else {
+                 
+                    sort(a, aux, from, mid);
+                    sort(a, aux, mid, to);
+                    merge(a, aux, from, mid, to); 
+                   
+                    for (int i = from; i < to; i++) {
+                        helper.copy(aux[i], a, i);
+                    }
+                }
+
+          
+                if (insurance) {
+                    for (int i = from + 1; i < to; i++) {
+                        
+                        if (helper.less(helper.get(a, i), helper.get(a, i - 1))) {
+                            helper.swap(a, i, i - 1);
+                        }
+                    }
+                }
+
+       
 
     }
 
