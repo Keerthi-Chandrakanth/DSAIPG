@@ -3,28 +3,47 @@
  */
 package com.phasmidsoftware.dsaipg.util;
 
-import com.phasmidsoftware.dsaipg.sort.*;
-import com.phasmidsoftware.dsaipg.sort.classic.BucketSort;
-import com.phasmidsoftware.dsaipg.sort.counting.LSDStringSort;
-import com.phasmidsoftware.dsaipg.sort.counting.MSDStringSort;
-import com.phasmidsoftware.dsaipg.sort.elementary.*;
-import com.phasmidsoftware.dsaipg.sort.linearithmic.TimSort;
-import com.phasmidsoftware.dsaipg.sort.linearithmic.*;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.chrono.ChronoLocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Random;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
+import com.phasmidsoftware.dsaipg.sort.Helper;
 import static com.phasmidsoftware.dsaipg.sort.InstrumentedComparatorHelper.AT;
+import com.phasmidsoftware.dsaipg.sort.NonInstrumentingComparableHelper;
+import com.phasmidsoftware.dsaipg.sort.Sort;
+import com.phasmidsoftware.dsaipg.sort.SortException;
+import com.phasmidsoftware.dsaipg.sort.SortWithComparableHelper;
+import com.phasmidsoftware.dsaipg.sort.SortWithHelper;
+import com.phasmidsoftware.dsaipg.sort.classic.BucketSort;
+import com.phasmidsoftware.dsaipg.sort.counting.LSDStringSort;
+import com.phasmidsoftware.dsaipg.sort.counting.MSDStringSort;
+import com.phasmidsoftware.dsaipg.sort.elementary.BubbleSort;
+import com.phasmidsoftware.dsaipg.sort.elementary.HeapSort;
+import com.phasmidsoftware.dsaipg.sort.elementary.InsertionSort;
+import com.phasmidsoftware.dsaipg.sort.elementary.InsertionSortOpt;
+import com.phasmidsoftware.dsaipg.sort.elementary.RandomSort;
+import com.phasmidsoftware.dsaipg.sort.elementary.ShellSort;
+import com.phasmidsoftware.dsaipg.sort.linearithmic.IntroSort;
+import com.phasmidsoftware.dsaipg.sort.linearithmic.MergeSort;
 import static com.phasmidsoftware.dsaipg.sort.linearithmic.MergeSort.MERGESORT;
+import com.phasmidsoftware.dsaipg.sort.linearithmic.QuickSort_3way;
+import com.phasmidsoftware.dsaipg.sort.linearithmic.QuickSort_Basic;
+import com.phasmidsoftware.dsaipg.sort.linearithmic.QuickSort_DualPivot;
+import com.phasmidsoftware.dsaipg.sort.linearithmic.TimSort;
 import static com.phasmidsoftware.dsaipg.util.Config_Benchmark.isInstrumented;
-import static com.phasmidsoftware.dsaipg.util.SortBenchmarkHelper.*;
+import static com.phasmidsoftware.dsaipg.util.SortBenchmarkHelper.generateRandomLocalDateTimeArray;
+import static com.phasmidsoftware.dsaipg.util.SortBenchmarkHelper.getWords;
+import static com.phasmidsoftware.dsaipg.util.SortBenchmarkHelper.regexLeipzig;
 import static com.phasmidsoftware.dsaipg.util.Utilities.formatWhole;
 
 /**
@@ -56,6 +75,15 @@ public class SortBenchmark {
         new SortBenchmark(config).doMain(args);
     }
 
+    public static int[] generateRandomArray(int size) {
+        Random random = new Random();
+        int[] array = new int[size];
+        for (int i = 0; i < size; i++) {
+            array[i] = random.nextInt(10000); // Random numbers between 0 and 9999
+        }
+        return array;
+    }
+
     /**
      * Method to allow unit testing of the main program.
      *
@@ -63,7 +91,9 @@ public class SortBenchmark {
      */
     void doMain(String[] args) {
         sortStrings(getWordCounts(args));
-        sortIntegers(getWordCounts(args));
+        
+        //sortStrings(Stream.of(10L,20L,30L,40L));
+        sortIntegers(Stream.of(10000L, 20000L, 40000L, 80000L, 160000L, 256000L));
     }
 
     /**
@@ -83,7 +113,8 @@ public class SortBenchmark {
      * @param wordCounts a stream of integer values representing the sizes of the integer datasets to be sorted
      */
     void sortIntegers(Stream<Long> wordCounts) {
-        wordCounts.forEach(this::runIntegerSorts);
+        wordCounts.filter(value -> value != 0)
+                .forEach(this::runIntegerSorts);
     }
 
     /**
@@ -96,15 +127,20 @@ public class SortBenchmark {
      *          Throws a {@link SortException} if the size exceeds this limit.
      */
     void runIntegerSorts(long N) {
-        if (N > Integer.MAX_VALUE) throw new SortException("number of elements is too large");
+        System.out.println("(inside integer)");
+        if (N > Long.MAX_VALUE) throw new SortException("number of elements is too large");
         double totalWork = getTotalWork(N, config, "benchmarkintegersorters");
         if (isConfigBenchmarkIntegerSorter("shellsort"))
             sortIntegersByShellSort((int) N, 12 * estimateRuns(totalWork, Math.pow(N, 4.0 / 3)));
         if (isConfigBenchmarkIntegerSorter("bucketsort"))
             runIntegerBucketSort((int) N, estimateRuns(totalWork * 2, N));
         if (isConfigBenchmarkIntegerSorter("quicksort"))
-            runIntegerQuickSort((int) N, 10 * estimateRuns(totalWork, Math.log(N) * N));
-    }
+            runIntegerQuickSort((int) N, 10 );
+        if (isConfigBenchmarkIntegerSorter("heapsort"))
+            runIntegerHeapSort((int) N, 10 );
+        if (isConfigBenchmarkIntegerSorter("mergesort"))
+            runIntegerMergeSort((int) N, 10 );
+}
 
     /**
      * Method to benchmark local date time sorts.
@@ -262,6 +298,8 @@ public class SortBenchmark {
         }
     }
 
+
+    
     /**
      * Estimate an appropriate amount of total work for the given problem size.
      *
@@ -315,10 +353,11 @@ public class SortBenchmark {
         Helper<Integer> helper = sorter.getHelper();
         helper.init(N);
         Integer[] xs = helper.random(N, Integer.class, r -> r.nextInt(1000));
-        runIntegerSortBenchmark(xs, N, runs, sorter, null, timeLoggersLinearithmic);
+        runIntegerSortBenchmark(xs, N, runs, sorter, sorter::preProcess, timeLoggersLinearithmic);
         helper.close();
     }
-
+    
+    
     /**
      * Runs a benchmark for the pure System sort method (using {@code Arrays.sort}).
      * This method measures the sorting performance of an array of strings over multiple runs.
@@ -355,10 +394,81 @@ public class SortBenchmark {
      * @param runs the number of sorting operations to be performed for benchmarking purposes.
      */
     private void runIntegerQuickSort(int N, final int runs) {
+        System.out.println("inside ");
         SortWithHelper<Integer> sorter = new QuickSort_DualPivot<>(N, runs, config);
+        if(N<0){
+            sorter = new QuickSort_DualPivot<>(-1*N, runs, config);
+        }
+
         Integer[] numbers = sorter.getHelper().random(Integer.class, Random::nextInt);
         runIntegerSortBenchmark(numbers, N, runs, sorter, sorter::preProcess, timeLoggersLinearithmic);
+        System.out.println("Stats of QuickSort ");
+        StatPack statPack=sorter.getHelper().getStatPack();
+        System.out.println("Stats :"+statPack.toString());
+
     }
+
+    private void runIntegerHeapSort(int N, final int runs) {
+        SortWithHelper<Integer> sorter = new HeapSort<>(N, runs, config);
+        if(N<0){
+            sorter = new HeapSort<>(-1*N, runs, config);
+        }
+
+        Integer[] numbers = sorter.getHelper().random(Integer.class, Random::nextInt);
+        runIntegerSortBenchmark(numbers, N, runs, sorter, sorter::preProcess, timeLoggersLinearithmic);
+        System.out.println("Stats of HeapSort ");
+        StatPack statPack=sorter.getHelper().getStatPack();
+        System.out.println("Stats :"+statPack.toString());
+    }
+    
+    private void runIntegerMergeSort(int N, final int runs) {
+        SortWithHelper<Integer> sorter=new MergeSort<>(N, runs, config);
+        if(N<0) {
+            sorter = new MergeSort<>(-1*N, runs, config);
+        }
+        Integer[] numbers = sorter.getHelper().random(Integer.class, Random::nextInt);
+        runIntegerSortBenchmark(numbers, N, runs, sorter, sorter::preProcess, timeLoggersLinearithmic);
+        System.out.println("Stats of MergeSort ");
+        StatPack statPack=sorter.getHelper().getStatPack();
+        System.out.println("Stats :"+statPack.toString());
+    }
+
+   /* void benchmarkIntegerSorters(int nIntegers) {
+        // Estimate the total work for sorting the integers
+        double totalWork = getTotalWork(nIntegers, config, BENCHMARKINTEGERSORTERS);
+        logger.info("benchmarkIntegerSorters: sorting " + formatWhole(nIntegers) + " integers" + 
+                    (isInstrumented(config) ? " and instrumented" : "") + 
+                    " with total work (for estimating runs): " + totalWork);
+        if (isInstrumented(config))
+            logger.info("    normalization of statistics is based on n ln n");
+    
+        Random random = new Random();
+    
+        // Estimate the number of runs for different algorithms based on the total work
+        int nRunsLinearithmic = estimateRuns(totalWork, minComparisons(nIntegers));
+        int nRunsLinear = estimateRuns(totalWork, 15.0 * nIntegers);
+        int nRunsBucket = estimateRuns(totalWork, 2.0 * nIntegers + 0.5 * nIntegers * nIntegers / BucketSort.DIGRAPHS_SIZE);
+    
+        // Run QuickSort
+        if (isConfigBenchmarkIntegerSorter("quicksort") && nRunsLinearithmic > 0) {
+            System.out.println("before ");
+            runIntegerQuickSort(nIntegers, nRunsLinearithmic);
+            System.out.println("after ");
+        }
+    
+        // Run HeapSort
+        if (isConfigBenchmarkIntegerSorter("heapsort") && nRunsLinear > 0) {
+            runIntegerHeapSort(nIntegers, nRunsLinear);
+        }
+    
+        // Run MergeSort
+        if (isConfigBenchmarkIntegerSorter("mergesort") && nRunsLinear > 0) {
+            runIntegerMergeSort(nIntegers, nRunsLinear);
+        }
+    
+        
+    }*/
+    
 
     /**
      * Sorts strings based on various benchmark configurations and performs
@@ -454,7 +564,12 @@ public class SortBenchmark {
     static void runIntegerSortBenchmark(Integer[] numbers, int n, int nRuns, SortWithHelper<Integer> sorter, UnaryOperator<Integer[]> preProcessor, TimeLogger[] timeLoggers) {
         logger.info("****************************** Integer sort: " + n + " " + sorter.getDescription() + " ******************************");
         try (Stopwatch stopwatch = new Stopwatch()) {
-            new SorterBenchmark<>(Integer.class, preProcessor, sorter, numbers, nRuns, timeLoggers).run(getDescription(n, sorter), n);
+            if(n<0){
+                new SorterBenchmark<>(Integer.class, preProcessor, sorter, numbers, nRuns, timeLoggers).run(getDescription(n, sorter), -1*n);
+            }
+            else {
+                new SorterBenchmark<>(Integer.class, preProcessor, sorter, numbers, nRuns, timeLoggers).run(getDescription(n, sorter), n);
+            }
             sorter.close();
             logger.info("************************************************************ (" + stopwatch.lap() / 1000.0 + " sec.)");
         }
